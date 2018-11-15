@@ -5,7 +5,6 @@
 [![build status][travis-image]][travis-url]
 [![Test coverage][coveralls-image]][coveralls-url]
 [![Gitter chat](https://badges.gitter.im/seeden/rbac.png)](https://gitter.im/seeden/rbac)
-[![Gittip](https://img.shields.io/gittip/seeden.svg?style=flat)](https://gratipay.com/seeden/)
 
 [npm-image]: https://img.shields.io/npm/v/rbac.svg?style=flat-square
 [npm-url]: https://www.npmjs.com/rbac
@@ -16,6 +15,8 @@
 [github-url]: https://github.com/seeden/rbac
 
 RBAC is the authorization library for NodeJS.
+
+:tada: We have supported DynamoDB storage now by implementation of [dynamoose](https://github.com/automategreen/dynamoose).
 
 ## Motivation
 
@@ -28,7 +29,7 @@ Please, if you found any bug or you need custom API, create an issue or pull req
 
 ## Documentation
 
-[Read more about API in documentation](http://cherryprojects.github.io/rbac/RBAC.html)
+[Read more about API in documentation](http://seeden.github.io/rbac/RBAC.html)
 
 # Support us
 
@@ -43,33 +44,31 @@ npm install rbac
 ## Usage
 
 ```js
-import RBAC from 'rbac'; // ES5 var RBAC = require('rbac').default;
+import { RBAC } from 'rbac'; // ES5 var RBAC = require('rbac').default;
 const rbac = new RBAC({
   roles: ['superadmin', 'admin', 'user', 'guest'],
   permissions: {
     user: ['create', 'delete'],
     password: ['change', 'forgot'],
     article: ['create'],
-    rbac: ['update']
+    rbac: ['update'],
   },
   grants: {
     guest: ['create_user', 'forgot_password'],
     user: ['change_password'],
     admin: ['user', 'delete_user', 'update_rbac'],
-    superadmin: ['admin']
-  }
-}, function(err, rbacInstance) {
-  if (err) {
-    throw err;
-  }
+    superadmin: ['admin'],
+  },
 });
+
+await rbac.init();
 ```
 
 ## Usage with express
 
 ```js
 import express from 'express';
-import RBAC from 'rbac';
+import { RBAC } from 'rbac';
 import secure from 'rbac/controllers/express';
 
 // your custom controller for express
@@ -79,47 +78,33 @@ function adminController(req, res, next) {
 
 const app = express();
 const rbac = new RBAC({
-  roles: ['admin', 'user']  
-}, (err, rbac) => {
-  if (err) throw err;
-
-  // setup express routes
-  app.use('/admin', secure.hasRole(rbac, 'admin'), adminController);
+  roles: ['admin', 'user'],
 });
+
+await rbac.init();
+
+// setup express routes
+app.use('/admin', secure.hasRole(rbac, 'admin'), adminController);
 ```    
 
 ## Check permissions
 
 ```js
-rbac.can('admin', 'create', 'article', (err, can) => {
-  if (err) {
-    throw err; // process error
-  }
-
-  if (can) {
-    console.log('Admin is able create article');
-  }
-});
+const can = await rbac.can('admin', 'create', 'article');
+if (can) {
+  console.log('Admin is able create article');
+}
 
 // or you can use instance of admin role
+const admin = await rbac.getRole('admin');
+if (!admin) {
+  return console.log('Role does not exists');
+}
 
-rbac.getRole('admin', (err, admin) => {
-  if (err) {
-    throw err; // process error
-  }
-
-  if (!admin) {
-    return console.log('Role does not exists');
-  }
-
-  admin.can('create', 'article', (err2, can) => {
-    if (err2) throw err2; // process error
-
-    if (can) {
-      console.log('Admin is able create article');    
-    }
-  });
-});
+const can = await admin.can('create', 'article');
+if (can) {
+  console.log('Admin is able create article');    
+}
 ```
 
 ## Mongoose user model
@@ -152,4 +137,4 @@ npm run build
 
 The MIT License (MIT)
 
-Copyright (c) 2016 Zlatko Fedor zlatkofedor@cherrysro.com
+Copyright (c) 2016-2018 Zlatko Fedor zfedor@goodmodule.com

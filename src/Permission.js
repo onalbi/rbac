@@ -1,42 +1,80 @@
+// @flow
 import Base from './Base';
 
-export const DELIMITER = '_';
-
 export default class Permission extends Base {
+  /**
+   * Compute name of permission from action and resource
+   * @function createName
+   * @memberof Permission
+   * @param {String} action Name of permission
+   * @param {String} resource Resource of permission
+   * @param {String} delimiter delimiter
+   * @return {String} Computed name of permission
+   * @static
+   */
+  static createName(action: string, resource: string, delimiter: string): string {
+    if (!delimiter) {
+      throw new Error('Delimiter is not defined');
+    }
+
+    if (!action) {
+      throw new Error('Action is not defined');
+    }
+
+    if (!resource) {
+      throw new Error('Resource is not defined');
+    }
+
+    return `${action}${delimiter}${resource}`;
+  }
+
+  static decodeName(name: string, delimiter: string): Object {
+    if (!delimiter) {
+      throw new Error('delimiter is required');
+    }
+
+    if (!name) {
+      throw new Error('Name is required');
+    }
+
+    const pos = name.indexOf(delimiter);
+    if (pos === -1) {
+      throw new Error('Wrong name');
+    }
+
+    return {
+      action: name.substr(0, pos),
+      resource: name.substr(pos + 1),
+    };
+  }
+
   /**
    * Permission constructor
    * @constructor Permission
    * @extends {Base}
-   * @param  {RBAC}     rbac       Instance of the RBAC
-   * @param  {String}   action     Name of the action
-   * @param  {String}   resource   Name of the resource
-   * @param  {Boolean}  [add=true] True if you need to save it to storage
-   * @param  {Function} cb         Callback function after add
+   * @param {RBAC} rbac Instance of the RBAC
+   * @param {string} action Name of the action
+   * @param {string} resource Name of the resource
    */
-  constructor(rbac, action, resource, add, cb) {
-    if (typeof add === 'function') {
-      cb = add;
-      add = true;
-    }
-
+  constructor(rbac: RBAC, action: string, resource: string) {
     if (!action || !resource) {
-      return cb(new Error('One of parameters is undefined'));
+      throw new Error('One of parameters is undefined');
     }
 
-    if (!Permission.isValidName(action) || !Permission.isValidName(resource)) {
-      return cb(new Error('Action or resource has no valid name'));
+    if (!Permission.isValidName(action, rbac.options.delimiter) || !Permission.isValidName(resource, rbac.options.delimiter)) {
+      throw new Error('Action or resource has no valid name');
     }
 
-    super(rbac, Permission.createName(action, resource), add, cb);
+    super(rbac, Permission.createName(action, resource, rbac.options.delimiter));
   }
 
   /**
    * Get action name of actual permission
    * @member Permission#action {String} Action of permission
    */
-  get action() {
+  get action(): string {
     if (!this._action) {
-      const decoded = Permission.decodeName(this.name);
+      const decoded = Permission.decodeName(this.name, this.rbac.options.delimiter);
       if (!decoded) {
         throw new Error('Action is null');
       }
@@ -51,9 +89,9 @@ export default class Permission extends Base {
    * Get resource name of actual permission
    * @member Permission#resource {String} Resource of permission
    */
-  get resource() {
+  get resource(): string {
     if (!this._resource) {
-      const decoded = Permission.decodeName(this.name);
+      const decoded = Permission.decodeName(this.name, this.rbac.options.delimiter);
       if (!decoded) {
         throw new Error('Resource is null');
       }
@@ -71,45 +109,25 @@ export default class Permission extends Base {
    * @param  {String}  resource Name of resource
    * @return {Boolean}
    */
-  can(action, resource) {
+  can(action: string, resource: string): boolean {
     return this.action === action && this.resource === resource;
-  }
-
-  /**
-   * Compute name of permission from action and resource
-   * @function createName
-   * @memberof Permission
-   * @param  {String} action   Name of permission
-   * @param  {String} resource Resource of permission
-   * @return {String}          Computed name of permission
-   * @static
-   */
-  static createName(action, resource) {
-    return action + DELIMITER + resource;
-  }
-
-  static decodeName(name) {
-    const pos = name.indexOf(DELIMITER);
-    if (pos === -1) {
-      return null;
-    }
-
-    return {
-      action: name.substr(0, pos),
-      resource: name.substr(pos + 1),
-    };
   }
 
   /**
    * Correct name can not contain whitespace or underscores.
    * @function isValidName
    * @memberof Permission
-   * @param  {String}  name Name
+   * @param  {String} name Name
+   * @param  {String} delimiter Delimiter
    * @return {Boolean}
    * @static
    */
-  static isValidName(name) {
-    const exp = new RegExp(`^[^${DELIMITER}\\s]+$`);
+  static isValidName(name: string, delimiter: string): boolean {
+    if (!delimiter) {
+      throw new Error('Delimeter is not defined');
+    }
+
+    const exp = new RegExp(`^[^${delimiter}\\s]+$`);
     return exp.test(name);
   }
 }
